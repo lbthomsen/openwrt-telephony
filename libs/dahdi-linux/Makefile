@@ -10,7 +10,7 @@ include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=dahdi-linux
 PKG_VERSION:=3.1.0
-PKG_RELEASE:=2
+PKG_RELEASE:=5
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://downloads.asterisk.org/pub/telephony/dahdi-linux/releases
@@ -20,14 +20,16 @@ PKG_LICENSE:=GPL-2.0
 PKG_LICENSE_FILES:=LICENSE
 PKG_MAINTAINER:=Vittorio Gambaletta <openwrt@vittgam.net>
 
-DAHDI_MODULES_EXTRA:=
+# With below variable set, $(PKG_SYMVERS_DIR)/dahdi-linux.symvers gets
+# generated from drivers/dahdi/Module.symvers.
+PKG_EXTMOD_SUBDIRS:=drivers/dahdi
 
 include $(INCLUDE_DIR)/package.mk
 
 define KernelPackage/dahdi
   SUBMENU:=Voice over IP
   TITLE:=DAHDI basic infrastructure
-  DEPENDS:=@!(LINUX_4_9||LINUX_4_14) @USB_SUPPORT +kmod-lib-crc-ccitt
+  DEPENDS:=@USB_SUPPORT +kmod-lib-crc-ccitt
   URL:=http://www.asterisk.org/
   FILES:= $(PKG_BUILD_DIR)/drivers/dahdi/dahdi.$(LINUX_KMOD_SUFFIX)
   AUTOLOAD:=$(call AutoProbe,dahdi)
@@ -88,12 +90,9 @@ define Build/Prepare
 endef
 
 define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR) \
-		ARCH="$(LINUX_KARCH)" \
-		$(TARGET_CONFIGURE_OPTS) \
-		CROSS_COMPILE="$(TARGET_CROSS)" \
-		KSRC="$(LINUX_DIR)" \
-		MODULES_EXTRA="$(DAHDI_MODULES_EXTRA)"
+	$(MAKE) $(PKG_JOBS) -C $(PKG_BUILD_DIR) \
+		$(KERNEL_MAKE_FLAGS) \
+		KSRC="$(LINUX_DIR)"
 endef
 
 define Build/InstallDev

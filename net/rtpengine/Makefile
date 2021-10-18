@@ -9,12 +9,14 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=rtpengine
-PKG_VERSION:=mr8.5.2.7
+PKG_VERSION:=9.5.1.3
 PKG_RELEASE:=1
 
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=https://codeload.github.com/sipwise/rtpengine/tar.gz/$(PKG_VERSION)?
-PKG_HASH:=3f175f3fbfcc3da6c789337fe250de43da9e1e0074ff49d1d2eb3440b5411908
+PKG_SOURCE:=$(PKG_NAME)-mr$(PKG_VERSION).tar.gz
+PKG_SOURCE_URL:=https://codeload.github.com/sipwise/rtpengine/tar.gz/mr$(PKG_VERSION)?
+PKG_HASH:=c9b07f120703429351abc120da71e4e72d4d9b8d72ec689a3cd61ab3030545c6
+
+PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(BUILD_VARIANT)/$(PKG_NAME)-mr$(PKG_VERSION)
 
 PKG_LICENSE:=GPL-3.0
 PKG_LICENSE_FILES:=LICENSE
@@ -29,6 +31,10 @@ PKG_BUILD_PARALLEL:=0
 
 PKG_BUILD_DEPENDS:=gperf/host
 
+# With below variable set, $(PKG_SYMVERS_DIR)/rtpengine.symvers gets generated
+# from kernel-module/Module.symvers.
+PKG_EXTMOD_SUBDIRS:=kernel-module
+
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/nls.mk
 
@@ -42,6 +48,7 @@ ENGINE_DEPENDS := \
 	+libopenssl \
 	+libpcap \
 	+libpcre \
+	+libwebsockets \
 	+xmlrpc-c-client \
 	+zlib
 
@@ -50,15 +57,18 @@ ENGINE_DEPENDS_TRANSCODING := \
 	+bcg729 \
 	+libffmpeg-full \
 	+libmariadb \
-	+libspandsp
+	+libspandsp3
 
 RECORDING_DEPENDS := \
+	+bcg729 \
 	+glib2 \
 	+libffmpeg-full \
 	+libmariadb \
 	+libopenssl
 
-RTPENGINE_USERID:=$(PKG_NAME)=378:$(PKG_NAME)=378
+RTPENGINE_USERID:=378
+RTPENGINE_GROUPID:=$(RTPENGINE_USERID)
+RTPENGINE_USER:=$(PKG_NAME)=$(RTPENGINE_USERID):$(PKG_NAME)=$(RTPENGINE_GROUPID)
 
 define Package/rtpengine/Default
   URL:=https://github.com/sipwise/rtpengine
@@ -70,7 +80,7 @@ $(call Package/rtpengine/Default)
   CATEGORY:=Network
   SECTION:=net
   SUBMENU:=Telephony
-  USERID:=$(RTPENGINE_USERID)
+  USERID:=$(RTPENGINE_USER)
 endef
 
 define Package/rtpengine/description/Template
@@ -149,7 +159,7 @@ $(call Package/rtpengine/Default)
   CATEGORY:=Network
   SECTION:=net
   SUBMENU:=Telephony
-  USERID:=$(RTPENGINE_USERID)
+  USERID:=$(RTPENGINE_USER)
   DEPENDS:=$(patsubst +%,+PACKAGE_rtpengine-recording:%,$(RECORDING_DEPENDS))
 endef
 
@@ -200,11 +210,17 @@ $(call Package/rtpengine/Default)
   FILES:=$(PKG_BUILD_DIR)/kernel-module/xt_RTPENGINE.$(LINUX_KMOD_SUFFIX)
   AUTOLOAD:=$(call AutoProbe,xt_RTPENGINE)
   DEPENDS := \
+	  +PACKAGE_kmod-ipt-rtpengine:kmod-crypto-aead \
 	  +PACKAGE_kmod-ipt-rtpengine:kmod-crypto-hash \
 	  +PACKAGE_kmod-ipt-rtpengine:kmod-ipt-core
   MODPARAMS.xt_RTPENGINE := \
-	  proc_uid=$(PKG_NAME) \
-	  proc_gid=$(PKG_NAME)
+	  proc_uid=$(RTPENGINE_USERID) \
+	  proc_gid=$(RTPENGINE_GROUPID)
+  USERID:=$(RTPENGINE_USER)
+endef
+
+define KernelPackage/ipt-rtpengine/conffiles
+/etc/modules.d/ipt-rtpengine
 endef
 
 define KernelPackage/ipt-rtpengine/description
@@ -237,10 +253,10 @@ define Build/Compile
 
 ifneq ($(CONFIG_PACKAGE_kmod-ipt-rtpengine),)
 	RTPENGINE_VERSION=$(PKG_VERSION) $(MAKE) \
+		$(PKG_JOBS) \
 		-C $(PKG_BUILD_DIR)/kernel-module \
 		KSRC=$(LINUX_DIR) \
-		ARCH=$(LINUX_KARCH) \
-		CROSS_COMPILE=$(TARGET_CROSS)
+		$(KERNEL_MAKE_FLAGS)
 endif
 
 ifneq ($(CONFIG_PACKAGE_iptables-mod-rtpengine),)
@@ -260,8 +276,10 @@ endef
 define Build/InstallDev
 endef
 
-$(eval $(call BuildPackage,rtpengine-no-transcode))
+# KernelPackage calls need to go first, otherwise hooks like
+# collect_module_symvers won't get added.
 $(eval $(call KernelPackage,ipt-rtpengine))
+$(eval $(call BuildPackage,rtpengine-no-transcode))
 $(eval $(call BuildPackage,iptables-mod-rtpengine))
 $(eval $(call BuildPackage,rtpengine))
 $(eval $(call BuildPackage,rtpengine-recording))

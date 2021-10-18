@@ -8,13 +8,13 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=freeswitch
-PKG_VERSION:=1.10.5
-PKG_RELEASE:=2
+PKG_VERSION:=1.10.6
+PKG_RELEASE:=5
 PKG_MAINTAINER:=Sebastian Kemper <sebastian_ml@gmx.net>
 
 PKG_SOURCE:=freeswitch-$(PKG_VERSION).-release.tar.xz
 PKG_SOURCE_URL:=https://files.freeswitch.org/releases/freeswitch
-PKG_HASH:=3e26600767a82946eca94af2c8f14712783aa83db5fb1cc57585f544aecce327
+PKG_HASH:=9a08d4e184e6d715e1c12c43a0f901597151752ef236f0a37e40996272b5c38d
 
 PKG_CPE_ID:=cpe:/a:freeswitch:freeswitch
 
@@ -230,21 +230,9 @@ PKG_CONFIG_DEPENDS:= \
 	CONFIG_PACKAGE_freeswitch-misc-perl-esl \
 	CONFIG_SOFT_FLOAT
 
-include $(INCLUDE_DIR)/uclibc++.mk
 include $(INCLUDE_DIR)/package.mk
 # iconv support
 include $(INCLUDE_DIR)/nls.mk
-#######################################################
-# mod_gsmopen can't detect if iconv's inbuf is const. #
-#                                                     #
-#                  musl    uclibc                     #
-# libiconv-stub    -       -                          #
-# libiconv-full    -       const                      #
-#                                                     #
-#######################################################
-ifeq ($(ICONV_FULL)$(CONFIG_USE_UCLIBC),1y)
-TARGET_CFLAGS+=-DFS_ICONV_INBUF_CONST
-endif
 
 FS_PERL_FEED:=$(TOPDIR)/feeds/packages/lang/perl
 
@@ -368,8 +356,8 @@ $(call Package/freeswitch/Default)
   MENU:=1
   USERID:=freeswitch=372:freeswitch=372
   DEPENDS:= \
-	  $(CXX_DEPENDS) \
 	  $(ICONV_DEPENDS) \
+	  +libstdcpp \
 	  +!BUSYBOX_DEFAULT_SU:shadow-utils \
 	  +!BUSYBOX_DEFAULT_SU:shadow-su \
 	  +@OPENSSL_WITH_DEPRECATED \
@@ -979,7 +967,7 @@ $(eval $(call Package/freeswitch/Module,esl,Single ESL,This module adds an API f
 $(eval $(call Package/freeswitch/Module,event_multicast,Multicast Event,Multicast Event System for FreeSWITCH.,))
 $(eval $(call Package/freeswitch/Module,event_socket,Event socket,Sends events via a single socket. Needed for fs_cli.,))
 $(eval $(call Package/freeswitch/Module,event_test,Event test,Event demo module.,))
-$(eval $(call Package/freeswitch/Module,event_zmq,ZMQ event,ZMQ event module.,@!USE_UCLIBCXX))
+$(eval $(call Package/freeswitch/Module,event_zmq,ZMQ event,ZMQ event module.,))
 $(eval $(call Package/freeswitch/Module,expr,Expr,This module adds expr support for expression evaluation.,))
 $(eval $(call Package/freeswitch/Module,fail2ban,Fail2ban logging,Provides support for Fail2ban logging.,))
 $(eval $(call Package/freeswitch/Module,fifo,FIFO,This module adds a first-in first-out queue system.,))
@@ -1005,7 +993,7 @@ $(eval $(call Package/freeswitch/Module,local_stream,Local stream,Connects multi
 $(eval $(call Package/freeswitch/Module,logfile,File logger,Logs FreeSWITCH output to a file.,))
 $(eval $(call Package/freeswitch/Module,loopback,Loopback,A loopback channel driver.,))
 $(eval $(call Package/freeswitch/Module,lua,Lua,Lua language interface for FreeSWITCH.,+liblua))
-$(eval $(call Package/freeswitch/Module,mariadb,MariaDB,Adds MariaDB support.,+libmariadb @!USE_UCLIBCXX))
+$(eval $(call Package/freeswitch/Module,mariadb,MariaDB,Adds MariaDB support.,+libmariadb))
 $(eval $(call Package/freeswitch/Module,mp4v,MP4 video passthrough,MP4 video passthrough.,))
 $(eval $(call Package/freeswitch/Module,native_file,Native file,Plays files that are already encoded in the right format.,))
 $(eval $(call Package/freeswitch/Module,nibblebill,Nibblebill,This module allows for real-time accounting of a cash balance and\nusing that information for call routing.,))
