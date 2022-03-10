@@ -9,12 +9,12 @@ include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk
 
 PKG_NAME:=rtpengine
-PKG_VERSION:=9.5.2.1
-PKG_RELEASE:=1
+PKG_VERSION:=9.5.3.2
+PKG_RELEASE:=$(AUTORELEASE)
 
 PKG_SOURCE:=$(PKG_NAME)-mr$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=https://codeload.github.com/sipwise/rtpengine/tar.gz/mr$(PKG_VERSION)?
-PKG_HASH:=c7f08783e6d085b0fb1e2499a87a1e82f70aeb57f00f74ba56c5b2a2452c8fba
+PKG_HASH:=03d8da1b5efcaa17ef88f306046f49e30ca87b3998c26a13bd96df922f8e729f
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(BUILD_VARIANT)/$(PKG_NAME)-mr$(PKG_VERSION)
 
@@ -29,7 +29,7 @@ PKG_MAINTAINER:=Sebastian Kemper <sebastian_ml@gmx.net>
 # errors.
 PKG_BUILD_PARALLEL:=0
 
-PKG_BUILD_DEPENDS:=gperf/host
+PKG_BUILD_DEPENDS:=gperf/host perl/host
 
 # With below variable set, $(PKG_SYMVERS_DIR)/rtpengine.symvers gets generated
 # from kernel-module/Module.symvers.
@@ -242,7 +242,9 @@ ifeq ($(QUILT),)
 	cd "$(PKG_BUILD_DIR)" && \
 		$(FIND) . -maxdepth 2 -name "*Makefile" | \
 		xargs  -I{} $(SED) \
-		'/shell which dpkg-/s/dpkg/OpenWrt-has-no-dpkg/' {}
+		'/shell which dpkg-/s/dpkg/OpenWrt-has-no-dpkg/' {} && \
+		$(SED) 's|#!/usr/bin/perl|#!$(STAGING_DIR_HOSTPKG)/usr/bin/perl|' \
+		utils/const_str_hash
 endif
 endef
 
